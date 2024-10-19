@@ -1,3 +1,13 @@
+/************************************************************************************************************
+* FILE:         main.c                                                                                      *
+* AUTHOR:       Thiago Silva                                                                                *
+* CREATION:     18 OUT 2024                                                                                 *
+* MODIFICATION: 19 OUT 2024                                                                                 *
+* FRAMEWORK:    ESPRESSIF IDF                                                                               *
+* DESCRIPTION:  Envia mensagens MIDI seriais continuamente utilizando o Esp32                               *
+*               variando de 21 a 108 de forma sequencial                                                    *
+*************************************************************************************************************/
+
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -7,34 +17,34 @@
 #define TX_PIN UART_PIN_NO_CHANGE
 #define RX_PIN UART_PIN_NO_CHANGE
 
-// CONFIGURACOES DO MIDI
-#define MIDI_BAUD_RATE 115200
-#define MIDI_NOTE_ON 0x90
-#define MIDI_NOTE_OFF 0x80
-#define VELOCITY_ON 127
-#define VELOCITY_OFF 0
+// CONFIG
+#define MIDI_BAUD_RATE  115200
+#define MIDI_NOTE_ON    0b10010000
+#define MIDI_NOTE_OFF   0b10000000
+#define INTENSITY       0b01111111
 
 // NOTAS
-#define G1 31
-#define C2 36
-#define G2 43
-#define C4 60
+#define G1      31
+#define C2      36
+#define G2      43
+#define C4      60
 #define C_SHARP 61
-#define D4 62
+#define D4      62
 #define D_SHARP 63
-#define E4 64
-#define F4 65
+#define E4      64
+#define F4      65
 #define F_SHARP 66
-#define G4 67
+#define G4      67
 #define G_SHARP 68
-#define A4 69
+#define A4      69
 #define A_SHARP 70
-#define B4 71
-#define C5 72
+#define B4      71
+#define C5      72
 
 
-
-void uart_init() {
+// UART UART
+void uart_init()
+{
     const uart_config_t uart_config = {
         .baud_rate = MIDI_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
@@ -48,38 +58,41 @@ void uart_init() {
     uart_driver_install(UART_NUM, 1024 * 2, 0, 0, NULL, 0);
 }
 
-void send_midi(uint8_t status, uint8_t data1, uint8_t data2) {
-    uint8_t midi_message[3];
-    midi_message[0] = status;
-    midi_message[1] = data1;
-    midi_message[2] = data2;
+// FUNCAO DE ENVIO DE DADOS
+void send_midi(uint8_t status, uint8_t data_1, uint8_t data_2)
+{
+    uint8_t midi_msg[3];
+    midi_msg[0] = status;
+    midi_msg[1] = data_1;
+    midi_msg[2] = data_2;
 
-    uart_write_bytes(UART_NUM, (const char*)midi_message, 3);
+    uart_write_bytes(UART_NUM, (const char*)midi_msg, 3);
 }
 
-void midi_task(void* param) {
-    while (1) {
-        send_midi(MIDI_NOTE_ON, C4, VELOCITY_ON);
-        send_midi(MIDI_NOTE_ON, E4, VELOCITY_ON);
-        send_midi(MIDI_NOTE_ON, G4, VELOCITY_ON);
-        send_midi(MIDI_NOTE_ON, C5, VELOCITY_ON);
-        send_midi(MIDI_NOTE_ON, G1, VELOCITY_ON);
-        send_midi(MIDI_NOTE_ON, C2, VELOCITY_ON);
-        send_midi(MIDI_NOTE_ON, G2, VELOCITY_ON);
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-
-        send_midi(MIDI_NOTE_OFF, C4, VELOCITY_OFF);
-        send_midi(MIDI_NOTE_OFF, E4, VELOCITY_OFF);
-        send_midi(MIDI_NOTE_OFF, G4, VELOCITY_OFF);
-        send_midi(MIDI_NOTE_OFF, C5, VELOCITY_OFF);
-        send_midi(MIDI_NOTE_OFF, G1, VELOCITY_OFF);
-        send_midi(MIDI_NOTE_OFF, C2, VELOCITY_OFF);
-        send_midi(MIDI_NOTE_OFF, G2, VELOCITY_OFF);
+// LACO DE ENVIO CONTINUO DE MENSAGENS
+void midi_task(void* param)
+{
+    int i = 21;
+    while (true)
+    {
+        send_midi(MIDI_NOTE_ON, i, INTENSITY);
         vTaskDelay(100 / portTICK_PERIOD_MS);
+        send_midi(MIDI_NOTE_OFF, i, 0);
+
+        if (i == 108)
+        {
+            i = 21;
+        }
+        else
+        {
+            i++;
+        }
     }
 }
 
-void app_main() {
+// FUNCAO PRINCIPAL
+void app_main()
+{
     uart_init();
     xTaskCreate(midi_task, "midi_task", 2048, NULL, 5, NULL);
 }
